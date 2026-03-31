@@ -119,6 +119,44 @@ describe('tasks routes', () => {
     });
   });
 
+  describe('PATCH /tasks/:id/assign', () => {
+    test('assigns a task to a user', async () => {
+      const created = taskService.create({ title: 'Assign me' });
+
+      const res = await request(app).patch(`/tasks/${created.id}/assign`).send({ assignee: 'Oshi' });
+
+      expect(res.status).toBe(200);
+      expect(res.body.assignee).toBe('Oshi');
+      expect(res.body.id).toBe(created.id);
+    });
+
+    test('returns 404 for non-existent task', async () => {
+      const res = await request(app).patch('/tasks/missing-id/assign').send({ assignee: 'Oshi' });
+
+      expect(res.status).toBe(404);
+      expect(res.body.error).toBe('Task not found');
+    });
+
+    test('returns 400 when assignee is empty', async () => {
+      const created = taskService.create({ title: 'Assign me' });
+
+      const res = await request(app).patch(`/tasks/${created.id}/assign`).send({ assignee: '   ' });
+
+      expect(res.status).toBe(400);
+      expect(res.body.error).toBe('assignee must be a non-empty string');
+    });
+
+    test('returns 409 when task is already assigned', async () => {
+      const created = taskService.create({ title: 'Already assigned' });
+      await request(app).patch(`/tasks/${created.id}/assign`).send({ assignee: 'Aman' });
+
+      const res = await request(app).patch(`/tasks/${created.id}/assign`).send({ assignee: 'Sam' });
+
+      expect(res.status).toBe(409);
+      expect(res.body.error).toBe('Task is already assigned');
+    });
+  });
+
   describe('GET /tasks/stats', () => {
     test('returns counts by status and overdue', async () => {
       const pastDate = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
